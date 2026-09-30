@@ -125,6 +125,11 @@ const el = {
     exportStatus: $("export-status"),
     importFile: $("import-file"),
     importStatus: $("import-status"),
+    transferLink: $("transfer-link"),
+    transferCode: $("transfer-code"),
+    transferInput: $("transfer-input"),
+    transferImport: $("transfer-import"),
+    transferStatus: $("transfer-status"),
     reset: $("reset"),
 };
 
@@ -1572,6 +1577,190 @@ function parseImport(name, text) {
     return { found, total };
 }
 
+/* Transfer: answers packed into a short code, to carry to another browser --- */
+
+/**
+ * The site has no server, so moving to another browser means carrying the
+ * answers yourself. A transfer code is every answer as a few bytes (the gap
+ * to the previous IMDb id, then one byte of status and rating), compressed
+ * and written as URL-safe base64. It travels as a link (after "#t=", a part
+ * of the address browsers never send to a server) or as plain text to paste.
+ * Marking times are not carried. The code depends on the order of STATUSES.
+ */
+const TRANSFER_HASH = "#t=";
+
+function toBase64Url(bytes) {
+    let binary = "";
+
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromBase64Url(text) {
+    const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function pipeBytes(bytes, stream) {
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+}
+
+async function encodeTransfer() {
+    const ids = [...marks.keys()].sort((a, b) => a - b);
+    const bytes = [];
+    let previous = 0;
+
+    for (const id of ids) {
+        const mark = marks.get(id);
+        let gap = id - previous;
+        previous = id;
+
+        while (gap > 127) {
+            bytes.push((gap % 128) + 128);
+            gap = Math.floor(gap / 128);
+        }
+
+        bytes.push(gap, STATUSES.indexOf(mark.s) * 32 + (mark.r === null ? 0 : Math.round(mark.r * 2)));
+    }
+
+    const raw = new Uint8Array(bytes);
+
+    if ("CompressionStream" in window) {
+        return `1z${toBase64Url(await pipeBytes(raw, new CompressionStream("deflate-raw")))}`;
+    }
+
+    return `1r${toBase64Url(raw)}`;
+}
+
+/** Accepts a bare code or a whole link containing one; returns [{ id, status, rating }]. */
+async function decodeTransfer(input) {
+    let code = String(input || "").trim();
+    const at = code.indexOf(TRANSFER_HASH);
+
+    if (at >= 0) {
+        code = code.slice(at + TRANSFER_HASH.length);
+    }
+
+    const tag = code.slice(0, 2);
+    let bytes = fromBase64Url(code.slice(2));
+
+    if (tag === "1z") {
+        bytes = await pipeBytes(bytes, new DecompressionStream("deflate-raw"));
+    } else if (tag !== "1r") {
+        throw new Error("not a transfer code");
+    }
+
+    const entries = [];
+    let id = 0;
+    let i = 0;
+
+    while (i < bytes.length) {
+        let gap = 0;
+        let scale = 1;
+
+        while (bytes[i] > 127) {
+            gap += (bytes[i] - 128) * scale;
+            scale *= 128;
+            i += 1;
+        }
+
+        gap += bytes[i] * scale;
+        const packed = bytes[i + 1];
+        i += 2;
+
+        if (packed === undefined) {
+            throw new Error("transfer code is cut short");
+        }
+
+        id += gap;
+        const status = STATUSES[Math.floor(packed / 32)];
+        const half = packed % 32;
+
+        if (!status || half > 20) {
+            throw new Error("transfer code is damaged");
+        }
+
+        entries.push({ id, status, rating: half ? half / 2 : null });
+    }
+
+    return entries;
+}
+
+/** Merge a transfer code into this browser: its answers win for the titles it mentions. */
+async function importTransfer(input, statusTarget) {
+    let entries;
+
+    try {
+        entries = await decodeTransfer(input);
+    } catch (error) {
+        console.error(error);
+        say(statusTarget, "That is not a valid link or code.");
+        return false;
+    }
+
+    if (entries.length === 0) {
+        say(statusTarget, "That code has no answers in it.");
+        return false;
+    }
+
+    const clashes = entries.filter((entry) => marks.has(entry.id)).length;
+    const message = `Import ${entries.length.toLocaleString()} answers from the other browser?${clashes ? ` ${clashes.toLocaleString()} of them replace answers already here.` : ""}`;
+
+    if (!window.confirm(message)) {
+        say(statusTarget, "Import cancelled.");
+        return false;
+    }
+
+    const now = Date.now();
+
+    for (const entry of entries) {
+        marks.set(entry.id, { s: entry.status, r: entry.status === SEEN ? entry.rating : null, t: now });
+    }
+
+    saveMarks();
+    history.length = 0;
+    focusId = null;
+    renderProgress();
+    renderRecent();
+    renderView();
+    say(statusTarget, `Imported ${entries.length.toLocaleString()} answers.`);
+    return true;
+}
+
+async function copyTransfer(asLink) {
+    if (marks.size === 0) {
+        say(el.transferStatus, "Nothing to transfer yet.");
+        return;
+    }
+
+    const code = await encodeTransfer();
+    const text = asLink ? `${window.location.origin}${window.location.pathname}${TRANSFER_HASH}${code}` : code;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        say(el.transferStatus, `Copied ${asLink ? "a link" : "a code"} with ${marks.size.toLocaleString()} answers. Open or paste it in the other browser.`);
+    } catch {
+        el.transferInput.value = text;
+        el.transferInput.select();
+        say(el.transferStatus, "Copy the text in the box.");
+    }
+}
+
+/** A link opened from another browser carries its answers after "#t=". */
+async function importFromAddress() {
+    if (!window.location.hash.startsWith(TRANSFER_HASH)) {
+        return;
+    }
+
+    const hash = window.location.hash;
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    showView("export");
+    await importTransfer(hash, el.transferStatus);
+}
+
 async function importFile(file) {
     try {
         /* Both lists are needed to match whatever the file mentions. */
@@ -1987,6 +2176,26 @@ function wire() {
         el.importFile.value = "";
     });
 
+    el.transferLink.addEventListener("click", () => copyTransfer(true));
+    el.transferCode.addEventListener("click", () => copyTransfer(false));
+
+    el.transferImport.addEventListener("click", async () => {
+        if (!el.transferInput.value.trim()) {
+            say(el.transferStatus, "Paste a link or code first.");
+            return;
+        }
+
+        if (await importTransfer(el.transferInput.value, el.transferStatus)) {
+            el.transferInput.value = "";
+        }
+    });
+
+    el.transferInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            el.transferImport.click();
+        }
+    });
+
     el.reset.addEventListener("click", () => {
         if (marks.size === 0) {
             say(el.importStatus, "Nothing to reset.");
@@ -2027,6 +2236,7 @@ async function start() {
     await setKind(prefs.kind);
     renderRecent();
     showView(["deck", "list", "export"].includes(prefs.view) ? prefs.view : "deck");
+    importFromAddress();
 
     /* Fetch the other list quietly so the switch feels instant. */
     for (const kind of Object.keys(KINDS)) {

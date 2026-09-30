@@ -19,6 +19,11 @@ seen, rating them, and exporting the result. Part of piddicus.com.
   lists.
 - Answers are stored in the browser's localStorage. Nothing is sent to a
   server.
+- To move answers to another browser or device: Export, Another browser,
+  copy a link or code, then open the link or paste the code there. The
+  answers are packed into the text itself (about 3 characters per answer).
+  Importing merges; answers in the code replace existing ones for the same
+  titles.
 
 ## Files
 

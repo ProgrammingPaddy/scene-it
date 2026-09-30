@@ -134,6 +134,19 @@
                     <textarea class="preview" id="preview" readonly aria-label="Export preview"></textarea>
                 </div>
 
+                <div class="panel" aria-labelledby="transfer-title">
+                    <h2 class="panel__title" id="transfer-title">Another browser</h2>
+                    <div class="controls">
+                        <button class="button button--primary" id="transfer-link" type="button">Copy link</button>
+                        <button class="button" id="transfer-code" type="button">Copy code</button>
+                        <span class="status" id="transfer-status" aria-live="polite"></span>
+                    </div>
+                    <div class="controls">
+                        <input class="field transfer__input" id="transfer-input" type="text" placeholder="Paste a link or code from the other browser" aria-label="Link or code from the other browser" autocomplete="off" spellcheck="false">
+                        <button class="button" id="transfer-import" type="button">Import</button>
+                    </div>
+                </div>
+
                 <div class="panel" aria-labelledby="import-title">
                     <h2 class="panel__title" id="import-title">Import</h2>
                     <div class="controls">
