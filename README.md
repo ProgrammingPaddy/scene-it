@@ -8,6 +8,9 @@ seen, rating them, and exporting the result. Part of piddicus.com.
 - Shows one title at a time (poster, year, runtime, director or cast,
   genres, IMDb rating, synopsis). Answers: seen, not seen, want to watch,
   skip. Seen titles can be rated 0.5 to 10.
+- With a mouse, clicking the rating bar saves the rating at once. On a
+  touch screen, tapping or sliding on the bar only selects a rating; it is
+  saved when the card is swiped right or "Seen it" is tapped.
 - Covers the 10,000 most-voted feature films and the 5,000 most-voted TV
   series on IMDb. A switch selects movies, shows, or both.
 - A list view shows every title in a table with the same controls.

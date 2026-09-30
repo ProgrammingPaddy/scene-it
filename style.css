@@ -579,7 +579,74 @@ kbd {
 .bars--input {
     padding: var(--space-2) 0;
     cursor: pointer;
-    touch-action: manipulation;
+    /* A finger slides along the strip to choose; the page must not scroll or swipe under it. */
+    touch-action: none;
+}
+
+/* Half-point nudges, for fingers. Hidden where there is a precise pointer. */
+.rate__step {
+    display: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    line-height: 1;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+}
+
+.rate__step:active {
+    background: var(--color-surface-hover);
+}
+
+.rate--pending .rate__value {
+    color: var(--color-accent);
+}
+
+.action__rating {
+    font-weight: 600;
+    white-space: pre;
+}
+
+@media (pointer: coarse) {
+    .rate {
+        gap: var(--space-3);
+    }
+
+    .rate__label {
+        flex-basis: 100%;
+    }
+
+    .bars--input {
+        flex: 1 1 100%;
+        gap: 4px;
+        padding: var(--space-3) 0;
+    }
+
+    .bars--input .bar {
+        flex: 1;
+        width: auto;
+        height: 30px;
+        border-radius: 10px;
+    }
+
+    .bars--input:hover .bar {
+        transform: none;
+    }
+
+    .rate__step {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rate__value {
+        flex: 1;
+        min-width: 3em;
+        font-size: var(--text-xl);
+        text-align: center;
+    }
 }
 
 .bar {

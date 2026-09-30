@@ -65,6 +65,14 @@ const history = [];
 /** After an undo, show that title next even though the queue would not. */
 let focusId = null;
 
+/**
+ * A rating chosen on the current card but not saved yet. Touch sets it by
+ * tapping or sliding on the bars; it is saved with the next "seen" (swipe
+ * right, the Seen button, or the key). A mouse click on the bars still
+ * saves in one go.
+ */
+let pendingRating = null;
+
 const prefs = {
     view: "deck",
     kind: "movie",
@@ -106,6 +114,7 @@ const el = {
     viewExport: $("view-export"),
     cardHolder: $("card-holder"),
     actions: $("actions"),
+    seenRating: $("seen-rating"),
     undo: $("undo"),
     recent: $("recent"),
     helpButton: $("help-button"),
@@ -641,6 +650,7 @@ function renderDeck() {
             : `<p class="empty__title">All decided.</p><p>Every ${poolNoun()} in this selection has an answer. Try other filters, or head to Export.</p>`;
         el.cardHolder.append(empty);
         el.actions.hidden = true;
+        pendingRating = null;
         return;
     }
 
@@ -745,7 +755,39 @@ function renderDeck() {
     value.className = "rate__value";
     value.textContent = mark?.r ? `${mark.r}` : "";
 
-    rate.append(label, bars, value);
+    /* Touch only (shown by CSS on coarse pointers): nudge by half a point, or clear. */
+    const stepper = (text, name) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "rate__step";
+        button.textContent = text;
+        button.setAttribute("aria-label", name);
+        return button;
+    };
+    const minus = stepper("−", "Half a point lower");
+    const plus = stepper("+", "Half a point higher");
+
+    rate.append(label, bars, minus, value, plus);
+
+    /* A pending rating shows on the bars and on the Seen button until it is saved. */
+    const setPending = (rating) => {
+        pendingRating = rating;
+        paintBars(bars, rating ?? mark?.r ?? null);
+        value.textContent = rating !== null ? String(rating) : mark?.r ? String(mark.r) : "";
+        rate.classList.toggle("rate--pending", rating !== null);
+        el.seenRating.textContent = rating !== null ? ` · ${rating}` : "";
+    };
+
+    setPending(null);
+
+    minus.addEventListener("click", () => {
+        const next = (pendingRating ?? 0) - 0.5;
+        setPending(next >= 0.5 ? next : null);
+    });
+
+    plus.addEventListener("click", () => {
+        setPending(Math.min(10, (pendingRating ?? 0) + 0.5));
+    });
 
     const status = document.createElement("p");
     status.className = "card__status";
@@ -756,22 +798,56 @@ function renderDeck() {
 
     card.append(poster, body, rate, status);
 
-    /* Bars: hover previews, click marks seen with that rating. */
+    /* Bars with a mouse: hover previews, click marks seen with that rating.
+       With a finger or pen: tap or slide sets the pending rating only. */
+    let lastPointer = "mouse";
+    let scrubbing = false;
+
+    bars.addEventListener("pointerdown", (event) => {
+        lastPointer = event.pointerType;
+
+        if (event.pointerType === "mouse") {
+            return;
+        }
+
+        scrubbing = true;
+
+        try {
+            bars.setPointerCapture(event.pointerId);
+        } catch {
+            /* capture is a nicety; the slide still works inside the strip */
+        }
+
+        setPending(barValue(bars, event));
+    });
+
     bars.addEventListener("pointermove", (event) => {
-        if (event.pointerType !== "touch") {
+        if (event.pointerType === "mouse") {
             const rating = barValue(bars, event);
             paintBars(bars, rating);
             value.textContent = String(rating);
+        } else if (scrubbing) {
+            setPending(barValue(bars, event));
         }
     });
 
-    bars.addEventListener("pointerleave", () => {
-        paintBars(bars, mark?.r ?? null);
-        value.textContent = mark?.r ? String(mark.r) : "";
+    const stopScrub = () => {
+        scrubbing = false;
+    };
+
+    bars.addEventListener("pointerup", stopScrub);
+    bars.addEventListener("pointercancel", stopScrub);
+
+    bars.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") {
+            setPending(pendingRating);
+        }
     });
 
     bars.addEventListener("click", (event) => {
-        decide(title, SEEN, barValue(bars, event));
+        if (lastPointer === "mouse") {
+            decide(title, SEEN, barValue(bars, event));
+        }
     });
 
     attachSwipe(card, title);
@@ -843,7 +919,7 @@ function attachSwipe(card, title) {
         const strength = Math.min(1, Math.abs(dx) / SWIPE_DISTANCE);
         card.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
         card.style.setProperty("--hint", String(strength));
-        card.dataset.hint = dx > 0 ? "Seen" : "Not seen";
+        card.dataset.hint = dx > 0 ? `Seen${pendingRating !== null ? ` · ${pendingRating}` : ""}` : "Not seen";
         card.dataset.side = dx > 0 ? "right" : "left";
     });
 
@@ -862,7 +938,7 @@ function attachSwipe(card, title) {
         card.classList.remove("card--dragging");
 
         if (Math.abs(dx) >= SWIPE_DISTANCE) {
-            decide(title, dx > 0 ? SEEN : UNSEEN);
+            decide(title, dx > 0 ? SEEN : UNSEEN, dx > 0 ? pendingRating : null);
             return;
         }
 
@@ -1963,7 +2039,7 @@ function onKey(event) {
         case "Enter":
             event.preventDefault();
             pressAction("seen");
-            decide(title, SEEN);
+            decide(title, SEEN, pendingRating);
             break;
         case "ArrowLeft":
         case "n":
@@ -2043,7 +2119,8 @@ function wire() {
             return;
         }
 
-        decide(title, { seen: SEEN, unseen: UNSEEN, want: WANT, skip: SKIP }[button.dataset.action]);
+        const status = { seen: SEEN, unseen: UNSEEN, want: WANT, skip: SKIP }[button.dataset.action];
+        decide(title, status, status === SEEN ? pendingRating : null);
     });
 
     el.undo.addEventListener("click", undo);

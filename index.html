@@ -79,7 +79,7 @@
                 <div class="actions" id="actions">
                     <button class="action action--unseen" type="button" data-action="unseen">✕ Haven't seen it <kbd>←</kbd></button>
                     <button class="action action--want" type="button" data-action="want">+ Want to watch <kbd>↑</kbd></button>
-                    <button class="action action--seen" type="button" data-action="seen">✓ Seen it <kbd>→</kbd></button>
+                    <button class="action action--seen" type="button" data-action="seen">✓ Seen it<span class="action__rating" id="seen-rating"></span> <kbd>→</kbd></button>
                     <button class="action action--skip" type="button" data-action="skip">Not sure, skip <kbd>↓</kbd></button>
                 </div>
 
@@ -178,7 +178,7 @@
             <dt><kbd>/</kbd></dt><dd>Search</dd>
             <dt><kbd>?</kbd></dt><dd>This list</dd>
         </dl>
-        <p class="panel__hint">On a touch screen, swipe the card right for seen and left for not seen.</p>
+        <p class="panel__hint">On a touch screen, swipe the card right for seen and left for not seen. To rate, tap or slide along the bars (− and + nudge by half a point), then swipe right or tap Seen it to save.</p>
         <button class="button button--primary help__close" id="help-close" type="button">Close</button>
     </dialog>
 
