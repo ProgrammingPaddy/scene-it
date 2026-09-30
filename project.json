@@ -1,0 +1,11 @@
+{
+  "title": "Scene It",
+  "description": "Flick through popular movies and TV shows, mark the ones you have seen, rate them, export the list.",
+  "icon": null,
+  "tags": [
+    "tools"
+  ],
+  "entry": "index.html",
+  "order": 6,
+  "hidden": false
+}

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "standalone",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8791"],
+      "port": 8791
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8790", "--directory", "../piddicuscom/public"],
+      "port": 8790
+    }
+  ]
+}

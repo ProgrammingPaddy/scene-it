@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" role="img" aria-label="A stack of movie cards, one flicked to the seen side">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="var(--preview-bg-top, #2f2130)"/>
+      <stop offset="1" stop-color="var(--preview-bg-bottom, #241a26)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="320" height="200" fill="url(#bg)"/>
+
+  <!-- Cards waiting underneath, fanned back -->
+  <rect x="104" y="30" width="112" height="132" rx="12" fill="var(--preview-panel, #3b2a3b)" opacity="0.45" transform="rotate(-6 160 96)"/>
+  <rect x="104" y="30" width="112" height="132" rx="12" fill="var(--preview-panel, #3b2a3b)" opacity="0.7" transform="rotate(-3 160 96)"/>
+
+  <!-- The card in front: title bars, a year, a row of stars -->
+  <g transform="rotate(4 160 96)">
+    <rect x="104" y="30" width="112" height="132" rx="12" fill="var(--preview-panel, #3b2a3b)"/>
+    <rect x="116" y="46" width="30" height="5" rx="2.5" fill="var(--preview-muted, #977d8c)"/>
+    <rect x="116" y="60" width="82" height="9" rx="4.5" fill="var(--preview-cream, #f7edf1)"/>
+    <rect x="116" y="74" width="56" height="9" rx="4.5" fill="var(--preview-cream, #f7edf1)"/>
+    <rect x="116" y="92" width="40" height="5" rx="2.5" fill="var(--preview-line, #cbb3bf)" opacity="0.8"/>
+    <rect x="116" y="106" width="22" height="7" rx="3.5" fill="var(--preview-accent, #fec6d9)" opacity="0.35"/>
+    <rect x="142" y="106" width="28" height="7" rx="3.5" fill="var(--preview-accent, #fec6d9)" opacity="0.35"/>
+    <g fill="var(--preview-accent, #fec6d9)">
+      <path d="M121 140 l2.6-5.4 5.8-.8-4.2-4.1 1-5.9-5.2 2.8-5.2-2.8 1 5.9-4.2 4.1 5.8.8z"/>
+      <path d="M140 140 l2.6-5.4 5.8-.8-4.2-4.1 1-5.9-5.2 2.8-5.2-2.8 1 5.9-4.2 4.1 5.8.8z"/>
+      <path d="M159 140 l2.6-5.4 5.8-.8-4.2-4.1 1-5.9-5.2 2.8-5.2-2.8 1 5.9-4.2 4.1 5.8.8z"/>
+      <path d="M178 140 l2.6-5.4 5.8-.8-4.2-4.1 1-5.9-5.2 2.8-5.2-2.8 1 5.9-4.2 4.1 5.8.8z"/>
+      <path d="M197 140 l2.6-5.4 5.8-.8-4.2-4.1 1-5.9-5.2 2.8-5.2-2.8 1 5.9-4.2 4.1 5.8.8z" opacity="0.3"/>
+    </g>
+  </g>
+
+  <!-- Not seen, to the left -->
+  <circle cx="46" cy="96" r="22" fill="var(--preview-ink, #2a1e2a)" stroke="var(--preview-muted, #977d8c)" stroke-width="2"/>
+  <path d="M38 88 l16 16 M54 88 l-16 16" stroke="var(--preview-line, #cbb3bf)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Seen, to the right -->
+  <circle cx="274" cy="96" r="22" fill="var(--preview-accent, #fec6d9)"/>
+  <path d="M263 97 l7 7 l15 -16" fill="none" stroke="var(--preview-on-accent, #2a1220)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Motion lines toward the seen side -->
+  <g stroke="var(--preview-accent, #fec6d9)" stroke-width="2" stroke-linecap="round" opacity="0.6">
+    <path d="M228 78 h12"/>
+    <path d="M232 96 h10"/>
+    <path d="M228 114 h12"/>
+  </g>
+</svg>

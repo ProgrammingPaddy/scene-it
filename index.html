@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Flick through popular movies and TV shows, mark the ones you have seen, rate them, export the list.">
+    <meta name="keywords" content="tools">
+    <meta name="theme-color" content="#1d151c">
+    <title>Scene It</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://image.tmdb.org">
+    <link rel="preconnect" href="https://m.media-amazon.com">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Fredoka:wght@400;500;600&family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Site tokens and reset, so this page follows the site's theme. style.css
+         carries a low-priority copy of the tokens for when these are missing. -->
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/themes.css">
+    <script src="../../js/theme.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="page">
+        <p class="loading" id="loading">Loading…</p>
+
+        <div id="app" hidden>
+            <header class="top">
+                <h1 class="title">Scene It</h1>
+                <div class="progress" aria-label="Progress">
+                    <p class="progress__text" id="progress-text" aria-live="polite"></p>
+                    <div class="progress__bar"><span class="progress__fill" id="progress-fill"></span></div>
+                </div>
+            </header>
+
+            <div class="toolbar">
+                <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
+                    <button class="tab" type="button" role="tab" data-view="deck" aria-selected="true">Deck</button>
+                    <button class="tab" type="button" role="tab" data-view="list" aria-selected="false">List</button>
+                    <button class="tab" type="button" role="tab" data-view="export" aria-selected="false">Export</button>
+                </nav>
+                <div class="tabs tabs--kinds" id="kinds" role="group" aria-label="Movies or TV shows">
+                    <button class="tab" type="button" data-kind="movie" aria-pressed="true">Movies</button>
+                    <button class="tab" type="button" data-kind="show" aria-pressed="false">TV shows</button>
+                    <button class="tab" type="button" data-kind="both" aria-pressed="false">Both</button>
+                </div>
+            </div>
+
+            <div class="filters" role="group" aria-label="Filters">
+                <select class="select" id="order" aria-label="Order">
+                    <option value="popular">Most popular first</option>
+                    <option value="rating">Highest rated first</option>
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="title">A to Z</option>
+                    <option value="random">Random</option>
+                </select>
+                <button class="button button--quiet" id="shuffle" type="button" hidden>Shuffle again</button>
+                <select class="select" id="decade" aria-label="Decade">
+                    <option value="">Any decade</option>
+                </select>
+                <select class="select" id="genre" aria-label="Genre">
+                    <option value="">Any genre</option>
+                </select>
+                <select class="select" id="min-rating" aria-label="Minimum IMDb rating">
+                    <option value="0">Any IMDb rating</option>
+                </select>
+                <input class="field search" id="search" type="search" placeholder="Search titles, people" aria-label="Search titles, directors and cast">
+                <p class="filters__count" id="filter-count"></p>
+            </div>
+
+            <!-- Deck ---------------------------------------------------------- -->
+            <section class="deck" id="view-deck" aria-label="Deck">
+                <div id="card-holder"></div>
+
+                <div class="actions" id="actions">
+                    <button class="action action--unseen" type="button" data-action="unseen">✕ Haven't seen it <kbd>←</kbd></button>
+                    <button class="action action--want" type="button" data-action="want">+ Want to watch <kbd>↑</kbd></button>
+                    <button class="action action--seen" type="button" data-action="seen">✓ Seen it <kbd>→</kbd></button>
+                    <button class="action action--skip" type="button" data-action="skip">Not sure, skip <kbd>↓</kbd></button>
+                </div>
+
+                <div class="deck__foot">
+                    <p class="recent" id="recent" aria-live="polite"></p>
+                    <button class="button button--quiet" id="undo" type="button">Undo <kbd>Z</kbd></button>
+                    <button class="button button--quiet" id="help-button" type="button">Shortcuts <kbd>?</kbd></button>
+                </div>
+            </section>
+
+            <!-- List ---------------------------------------------------------- -->
+            <section class="list" id="view-list" aria-label="List" hidden>
+                <div class="chips" id="chips" role="group" aria-label="Show"></div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Title</th>
+                            <th scope="col">IMDb</th>
+                            <th scope="col">Your answer</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+                <div class="sentinel" id="sentinel" aria-hidden="true"></div>
+                <p class="list__more" id="list-more" aria-live="polite"></p>
+            </section>
+
+            <!-- Export -------------------------------------------------------- -->
+            <section id="view-export" aria-label="Export" hidden>
+                <div class="panel">
+                    <div class="stats" id="stats"></div>
+                </div>
+
+                <div class="panel" aria-labelledby="export-title">
+                    <h2 class="panel__title" id="export-title">Export</h2>
+                    <div class="formats" id="formats" role="group" aria-label="Format"></div>
+                    <div class="controls">
+                        <div class="radios" id="subset" role="radiogroup" aria-label="Which titles">
+                            <label><input type="radio" name="subset" value="seen" checked> Seen</label>
+                            <label><input type="radio" name="subset" value="want"> Want to watch</label>
+                            <label><input type="radio" name="subset" value="decided"> Seen, not seen and want to watch</label>
+                            <label><input type="radio" name="subset" value="all"> Everything, skipped too</label>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="button button--primary" id="copy" type="button">Copy</button>
+                        <button class="button" id="download" type="button">Download</button>
+                        <button class="button" id="open-watch-list" type="button" hidden>Open in the Watch List</button>
+                        <span class="status" id="export-status" aria-live="polite"></span>
+                    </div>
+                    <textarea class="preview" id="preview" readonly aria-label="Export preview"></textarea>
+                </div>
+
+                <div class="panel" aria-labelledby="import-title">
+                    <h2 class="panel__title" id="import-title">Import</h2>
+                    <div class="controls">
+                        <input class="file-input" id="import-file" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain">
+                        <label class="button" for="import-file">Import a file</label>
+                        <span class="spacer"></span>
+                        <button class="button button--quiet button--danger" id="reset" type="button">Reset all progress</button>
+                        <span class="status" id="import-status" aria-live="polite"></span>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="foot">
+                <p>Ratings and credits from IMDb. Synopses and posters from TMDB and IMDb. Your answers stay in this browser.</p>
+            </footer>
+        </div>
+    </main>
+
+    <dialog class="help" id="help" aria-labelledby="help-title">
+        <h2 class="help__title" id="help-title">Keyboard shortcuts</h2>
+        <dl class="help__list">
+            <dt><kbd>→</kbd> <kbd>S</kbd> <kbd>Enter</kbd></dt><dd>Seen it</dd>
+            <dt><kbd>←</kbd> <kbd>N</kbd> <kbd>X</kbd></dt><dd>Haven't seen it</dd>
+            <dt><kbd>1</kbd>…<kbd>9</kbd> <kbd>0</kbd></dt><dd>Seen it, rated 1 to 10 (0 is 10). Click the rating bar for half points.</dd>
+            <dt><kbd>↑</kbd> <kbd>W</kbd></dt><dd>Want to watch</dd>
+            <dt><kbd>↓</kbd> <kbd>Space</kbd> <kbd>K</kbd></dt><dd>Not sure, skip for now</dd>
+            <dt><kbd>Z</kbd> <kbd>Backspace</kbd></dt><dd>Undo</dd>
+            <dt><kbd>M</kbd> <kbd>T</kbd> <kbd>B</kbd></dt><dd>Movies, TV shows, both</dd>
+            <dt><kbd>/</kbd></dt><dd>Search</dd>
+            <dt><kbd>?</kbd></dt><dd>This list</dd>
+        </dl>
+        <p class="panel__hint">On a touch screen, swipe the card right for seen and left for not seen.</p>
+        <button class="button button--primary help__close" id="help-close" type="button">Close</button>
+    </dialog>
+
+    <script src="app.js" type="module"></script>
+    <!-- Adds the "back to the menu" bar at the top of the page. -->
+    <script src="../../js/return-home.js" defer></script>
+</body>
+</html>
